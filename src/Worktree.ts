@@ -69,31 +69,63 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
 
         this.refresh();
 
-        const pick = await vscode.window.showQuickPick(
-            [{ label: "Select the parent folder for the new worktree", id: 0 }, { label: "Cancel", id: 1 }],
-            {
-                title: "Create a new worktree",
+        let defaultUri = this._lastWorktreePath;
+        let askFolder = true;
+        let config = vscode.workspace.getConfiguration("git-worktree-menu");
+        const wtDirs = config.inspect<string | null>("worktreeDir");
+        if (wtDirs !== undefined){
+            if (wtDirs.workspaceFolderValue !== undefined && wtDirs.workspaceFolderValue !== null) {
+                this._lastWorktreePath = vscode.Uri.file(wtDirs.workspaceFolderValue);
+                askFolder = false;
             }
-        );
+            else if (wtDirs.workspaceValue !== undefined && wtDirs.workspaceValue !== null) {
+                this._lastWorktreePath = vscode.Uri.file(wtDirs.workspaceValue);
+                askFolder = false;
+            }
+            else if (wtDirs.globalValue !== undefined && wtDirs.globalValue !== null) {
+                defaultUri = vscode.Uri.file(wtDirs.globalValue);
+            }
+        }
 
-        if (pick?.id === 1) { return; }
+        if (askFolder){
+            const pick = await vscode.window.showQuickPick(
+                [{ label: "Select the parent folder for the new worktree", id: 0 }, { label: "Cancel", id: 1 }],
+                {
+                    title: "Create a new worktree",
+                }
+            );
 
-        let workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : undefined;
-        let defaultUri = this._lastWorktreePath || workspaceUri;
+            if (pick?.id === 1) { return; }
 
-        //select path
-        let fileUri = await vscode.window.showOpenDialog({
-            defaultUri: defaultUri,
-            canSelectMany: false,
-            openLabel: 'Select parent path for new worktree',
-            canSelectFiles: false,
-            canSelectFolders: true
-        });
-        if (!fileUri) { return; }
+            if (defaultUri === undefined)
+                defaultUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : undefined;
 
-        this._lastWorktreePath = fileUri[0];
+            //select path
+            let fileUri = await vscode.window.showOpenDialog({
+                defaultUri: defaultUri,
+                canSelectMany: false,
+                openLabel: 'Select parent path for new worktree',
+                canSelectFiles: false,
+                canSelectFolders: true
+            });
+            if (!fileUri) { return; }
 
-        vscode.window.showInformationMessage('Selected parent folder: ' + fileUri[0].fsPath);
+            this._lastWorktreePath = fileUri[0];
+            vscode.window.showInformationMessage('Selected parent folder: ' + this._lastWorktreePath.fsPath);
+
+            const folderCount = vscode.workspace.workspaceFolders?.length ?? 0;
+            if (folderCount > 0) {
+                if (folderCount > 1) {
+                    config.update("worktreeDir", this._lastWorktreePath.fsPath, vscode.ConfigurationTarget.WorkspaceFolder).then(() => {
+                        vscode.window.showInformationMessage('Parent worktree directory is saved for current workspace folder');
+                    });
+                } else {
+                    config.update("worktreeDir", this._lastWorktreePath.fsPath, vscode.ConfigurationTarget.Workspace).then(() =>{
+                        vscode.window.showInformationMessage('Parent worktree directory is saved for current workspace');
+                    });
+                }
+            }
+        }
 
         const folderName = await vscode.window.showInputBox({
             title: "Enter the folder name you would like for this worktree"
@@ -162,7 +194,8 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
 
         vscode.window.showInformationMessage('Selected branch: ' + branch.label);
 
-        const pathForBranch = path.join(fileUri[0].fsPath, folderName);
+        const wtPath = this._lastWorktreePath?.fsPath || '';
+        const pathForBranch = path.join(wtPath, folderName);
 
         const commands = [
             'worktree',
