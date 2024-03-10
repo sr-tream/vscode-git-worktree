@@ -114,7 +114,7 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
             vscode.window.showInformationMessage('Selected parent folder: ' + this._lastWorktreePath.fsPath);
 
             const folderCount = vscode.workspace.workspaceFolders?.length ?? 0;
-            if (folderCount > 0) {
+            if (folderCount > 0 && this._lastWorktreePath.fsPath !== wtDirs?.globalValue) {
                 if (folderCount > 1) {
                     config.update("worktreeDir", this._lastWorktreePath.fsPath, vscode.ConfigurationTarget.WorkspaceFolder).then(() => {
                         vscode.window.showInformationMessage('Parent worktree directory is saved for current workspace folder');
