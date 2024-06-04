@@ -264,10 +264,13 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
                     const count = parseInt(e);
                     if (count > 0) {
                         const label: vscode.TreeItemLabel = {
-                            label: `${worktree.branch} (-${count})`,
+                            label: `${worktree.branch} (-${count} commits)`,
                             highlights: [[worktree.branch.length + 2, worktree.branch.length + 2 + e.length]]
                         };
                         worktree.label = label;
+
+                        worktree.tooltip = new vscode.MarkdownString();
+                        worktree.tooltip.value = `This worktree is behind by **${count}** commit(s) of the current branch.\n\nClick to switch this window to this worktree`;
                     }
                 } catch (e) { }
             }
