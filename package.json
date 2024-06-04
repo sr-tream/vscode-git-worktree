@@ -109,6 +109,11 @@
             "type": "string"
           },
           "description": "List of local paths to copy to worktree."
+        },
+        "git-worktree-menu.showCommitsBehind": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show commits behind the worktrees and active branch."
         }
       }
     }

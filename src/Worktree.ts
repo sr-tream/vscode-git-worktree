@@ -224,12 +224,14 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
         const lines = e.split("\n");
 
         let currentCommit: string | undefined;
-        const gitApi = await getBuiltInGitApi();
-        if (gitApi && vscode.workspace.workspaceFolders) {
-            const wsFoldrs = vscode.workspace.workspaceFolders;
-            if (wsFoldrs.length > 0) {
-                const repo = gitApi.getRepository(wsFoldrs[0].uri);
-                currentCommit = repo?.state.HEAD?.commit;
+        if (Config.read().showCommitsBehind) {
+            const gitApi = await getBuiltInGitApi();
+            if (gitApi && vscode.workspace.workspaceFolders) {
+                const wsFoldrs = vscode.workspace.workspaceFolders;
+                if (wsFoldrs.length > 0) {
+                    const repo = gitApi.getRepository(wsFoldrs[0].uri);
+                    currentCommit = repo?.state.HEAD?.commit;
+                }
             }
         }
 

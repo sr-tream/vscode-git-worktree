@@ -4,10 +4,12 @@ export namespace Config {
     export const EXTENSION_NAME = 'git-worktree-menu';
 
     export interface Global {
-        copyPaths: string[]
+        copyPaths: string[],
+        showCommitsBehind: boolean
     }
     export const DEFAULT_GLOBAL: Global = {
-        copyPaths: ['.vscode']
+        copyPaths: ['.vscode'],
+        showCommitsBehind: false
     }
 
     export function read(): Global {
