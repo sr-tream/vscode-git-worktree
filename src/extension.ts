@@ -5,7 +5,7 @@ import { WorktreeProvider } from './Worktree';
 
 import { API as GitAPI, GitExtension } from './git.d';
 
-async function getBuiltInGitApi(): Promise<GitAPI | undefined> {
+export async function getBuiltInGitApi(): Promise<GitAPI | undefined> {
 	try {
 		const extension = vscode.extensions.getExtension<GitExtension>('vscode.git');
 		if (extension !== undefined) {

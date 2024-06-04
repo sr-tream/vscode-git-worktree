@@ -5,6 +5,7 @@ import { join as join_path } from 'path';
 import { simpleGit } from 'simple-git';
 import path = require('node:path');
 
+import { getBuiltInGitApi } from './extension';
 import { Config } from './config';
 import { copyPath } from './CopyPath';
 
@@ -222,13 +223,23 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
         const worktrees: Worktree[] = [];
         const lines = e.split("\n");
 
-        lines.forEach(element => {
+        let currentCommit: string | undefined;
+        const gitApi = await getBuiltInGitApi();
+        if (gitApi && vscode.workspace.workspaceFolders) {
+            const wsFoldrs = vscode.workspace.workspaceFolders;
+            if (wsFoldrs.length > 0) {
+                const repo = gitApi.getRepository(wsFoldrs[0].uri);
+                currentCommit = repo?.state.HEAD?.commit;
+            }
+        }
+
+        for (const element of lines) {
             const line = element.trim().split(/\s+/);
             // console.log(Object.values(line))
 
-            if (Object.values(line).length === 1 || line.at(1) === '(bare)') { return; }
+            if (Object.values(line).length === 1 || line.at(1) === '(bare)') { continue; }
 
-            if (!fs.existsSync(join_path(line[0], ".git"))) { return; }
+            if (!fs.existsSync(join_path(line[0], ".git"))) { continue; }
 
             const openCommand: vscode.Command = {
                 title: "open",
@@ -236,16 +247,33 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Worktree> {
                 arguments: [line[0]]
             };
 
-            worktrees.push(
+            const id = line[1];
+            let worktree =
                 new Worktree(
                     line[2].slice(1, -1),
                     line[0],
-                    line[1],
+                    id,
                     vscode.TreeItemCollapsibleState.None,
                     openCommand
-                )
-            );
-        });
+                );
+
+            if (currentCommit && worktree.contextValue !== "current-worktree") {
+                const commands = ['rev-list', `${id}..${currentCommit}`, '--count'];
+                const e = await simpleGit(path).raw(...commands);
+                try {
+                    const count = parseInt(e);
+                    if (count > 0) {
+                        const label: vscode.TreeItemLabel = {
+                            label: `${worktree.branch} (-${count})`,
+                            highlights: [[worktree.branch.length + 2, worktree.branch.length + 2 + e.length]]
+                        };
+                        worktree.label = label;
+                    }
+                } catch (e) { }
+            }
+
+            worktrees.push(worktree);
+        }
 
         this.worktrees = worktrees;
 
@@ -261,7 +289,7 @@ export class Worktree extends vscode.TreeItem {
         public branch: string,
         // public readonly label: string,
         public path: string,
-        id: string,
+        public id: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly command?: vscode.Command,
     ) {
